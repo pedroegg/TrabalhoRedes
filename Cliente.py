@@ -2,10 +2,11 @@ from socket import *
 import _thread
 from time import strftime
 import random
+import time
 
-serverHost = '10.254.187.12'
+serverHost = '192.168.2.14'
 serverPort = 5000
-nickname = 'Pedro Egg'
+nickname = 'ClienteBatalhaNaval'
 
 sockObj = socket(AF_INET, SOCK_STREAM)
 
@@ -22,19 +23,22 @@ class Matriz:
     lista8 = []
     lista9 = []
     lista10 = []
+    valorInicial = None
 
-    def __init__(self, valorInicial):
-        self.lista1 = [valorInicial] * 10
-        self.lista2 = [valorInicial] * 10
-        self.lista3 = [valorInicial] * 10
-        self.lista4 = [valorInicial] * 10
-        self.lista5 = [valorInicial] * 10
-        self.lista6 = [valorInicial] * 10
-        self.lista7 = [valorInicial] * 10
-        self.lista8 = [valorInicial] * 10
-        self.lista9 = [valorInicial] * 10
-        self.lista10 = [valorInicial] * 10
-        self.posicionarNavios()
+    def __init__(self, valorInicial, posicionarNavios):
+        self.valorInicial = valorInicial
+        self.lista1 = [self.valorInicial] * 10
+        self.lista2 = [self.valorInicial] * 10
+        self.lista3 = [self.valorInicial] * 10
+        self.lista4 = [self.valorInicial] * 10
+        self.lista5 = [self.valorInicial] * 10
+        self.lista6 = [self.valorInicial] * 10
+        self.lista7 = [self.valorInicial] * 10
+        self.lista8 = [self.valorInicial] * 10
+        self.lista9 = [self.valorInicial] * 10
+        self.lista10 = [self.valorInicial] * 10
+        if posicionarNavios:
+            self.posicionarNavios()
 
     def get(self, posicaox, posicaoy):
         if posicaox == 0:
@@ -81,37 +85,58 @@ class Matriz:
             self.lista10[posicaoy] = valor
 
     def print(self):
+        print("  | A B C D E F G H I J")
+        print("-----------------------")
+        print("0", end=' | ')
         for x in self.lista1:
             print(x, end=' ')
         print('')
+        print("1", end=' | ')
         for x in self.lista2:
             print(x, end=' ')
         print('')
+        print("2", end=' | ')
         for x in self.lista3:
             print(x, end=' ')
         print('')
+        print("3", end=' | ')
         for x in self.lista4:
             print(x, end=' ')
         print('')
+        print("4", end=' | ')
         for x in self.lista5:
             print(x, end=' ')
         print('')
+        print("5", end=' | ')
         for x in self.lista6:
-
             print(x, end=' ')
         print('')
+        print("6", end=' | ')
         for x in self.lista7:
             print(x, end=' ')
         print('')
+        print("7", end=' | ')
         for x in self.lista8:
             print(x, end=' ')
         print('')
+        print("8", end=' | ')
         for x in self.lista9:
             print(x, end=' ')
         print('')
+        print("9", end=' | ')
         for x in self.lista10:
             print(x, end=' ')
         print('')
+        print("-----------------------")
+        print("  | A B C D E F G H I J\n")
+
+    def isTodosNaviosAfundados(self):
+
+        for x in range(0, 10, 1):
+            for y in range(0, 10, 1):
+                if self.get(x, y) != 'X' and self.get(x, y) != self.valorInicial:
+                    return False
+        return True
 
     def insertPortaAviao(self, xInicial, yInicial, HorizontalOrVertical):
         self.set(xInicial, yInicial, 'A')
@@ -174,25 +199,57 @@ class Matriz:
 
 
 sockObj.connect((serverHost, serverPort))
-matriz = Matriz(0)
-matriz.print()
+matriz = Matriz(0, True)
+matrizInimiga = Matriz('?', False)
+linhaAnterior = None
+colunaAnterior = None
 mensagem = 'ConectarCliente ' + nickname
 sockObj.sendall(mensagem.encode('utf-8'))
-print("Enviado -> " + mensagem)
 
 
 def darTiro():
-    print("Formato de entrada: 2,3 onde 2 = linha e 3 = coluna")
-    local = str(input("Digite onde deseja atirar: ")).split(',')
-    linha = int(local[0])
-    coluna = int(local[1])
-    while (linha > 9 or linha < 0) or (coluna > 9 or coluna < 0):
-        print("Entrada inválida! Tente outra vez, por favor.")
-        local = str(input("Digite onde deseja atirar: ")).split(',')
-        linha = int(local[0])
-        coluna = int(local[1])
-    print("Atirando na posição {}, {}...".format(linha, coluna))
-    sockObj.sendall("TIRO {},{}".format(linha, coluna).encode('utf-8'))
+    local = str(input("Digite onde deseja atirar ou sua opcao: ")).upper().replace(" ", "").split(',')
+    if local[0] == 'P':
+        print("Sua Matriz: ")
+        matriz.print()
+        time.sleep(1)
+        print("Matriz Inimiga: ")
+        matrizInimiga.print()
+        time.sleep(1)
+        darTiro()
+    else:
+        try:
+            global linhaAnterior
+            global colunaAnterior
+            linha = int(local[0])
+            if local[1] is not int:
+                coluna = convertColunaToInt(local[1])
+            else:
+                coluna = int(local[1])
+            while (linha > 9 or linha < 0) or (coluna > 9 or coluna < 0):
+                print("Entrada invalida! Tente outra vez, por favor.")
+                local = str(input("Digite onde deseja atirar: ")).split(',')
+                linha = int(local[0])
+                if local[1] is not int:
+                    coluna = convertColunaToInt(local[1])
+                else:
+                    coluna = int(local[1])
+            linhaAnterior = linha
+            colunaAnterior = coluna
+            print("Atirando na posicao {}, {}...".format(linha, convertColunaToChar(coluna)))
+            time.sleep(1)
+            sockObj.sendall("TIRO {},{}".format(linha, coluna).encode('utf-8'))
+        except:
+            print("Entrada invalida! Tente outra vez, por favor.")
+            darTiro()
+
+
+def convertColunaToInt(caractere):
+    return int(ord(caractere) - 65)
+
+
+def convertColunaToChar(numero):
+    return chr(numero + 65)
 
 
 while True:
@@ -203,27 +260,41 @@ while True:
             if 'StartGame' in mensagemRecebida:
                 print("O Jogo Começou!")
                 print("Sua vez de atirar!")
+                print("Formato de entrada: 2,D onde 2 = linha e D = coluna\n"
+                      "Voce pode tambem digitar P caso queira ver sua matriz\n")
                 darTiro()
             if 'HIT' in mensagemRecebida:
-                print("Você acertou o tiro! Sua vez novamente!")
+                navio = mensagemRecebida.split(" ")[1]
+                print("Voce ACERTOU o tiro! :) Atingiu um navio {}. Sua vez novamente!".format(navio))
+                matrizInimiga.set(linhaAnterior, colunaAnterior, navio)
                 darTiro()
             if 'MISS' in mensagemRecebida:
-                print("Você errou o tiro :(\nVez do oponente!")
+                print("Voce ERROU o tiro :( Vez do oponente!")
+            if 'FIMJOGO' in mensagemRecebida:
+                print("PARABENS!! VOCE GANHOU O JOGO! :)")
+                sockObj.close()
+                break
             if 'TIRO' in mensagemRecebida:
                 params = mensagemRecebida.replace('TIRO ', '').split(',')
                 linha = int(params[0])
                 coluna = int(params[1])
-                if str(matriz.get(linha, coluna)) != '0' and str(matriz.get(linha, coluna)) != 'X':
+                if matriz.get(linha, coluna) != matriz.valorInicial and matriz.get(linha, coluna) != 'X':
                     matriz.set(linha, coluna, 'X')
-                    print("Servidor acertou o tiro! Posição {}, {}".format(linha, coluna))
-                    print("Vez do servidor, novamente!")
-                    sockObj.sendall("HIT".encode('utf-8'))
+                    print("Servidor ACERTOU o tiro! Posicao {}, {}. Vez do servidor, novamente!".format(linha, convertColunaToChar(coluna)))
+                    if matriz.isTodosNaviosAfundados():
+                        print("FIM DE JOGO! Servidor ganhou! :(")
+                        sockObj.sendall("FIMJOGO".encode('utf-8'))
+                        break
+                    else:
+                        sockObj.sendall("HIT".encode('utf-8'))
                 else:
-                    print("Servidor errou o tiro! Posicao {}, {}".format(linha, coluna))
-                    print("Sua vez, Cliente!")
+                    print("Servidor ERROU o tiro! Posicao {}, {}. Sua vez, Cliente!".format(linha, convertColunaToChar(coluna)))
                     sockObj.sendall("MISS".encode('utf-8'))
                     darTiro()
-    except:
-        print('Finalizando thread de escutar mensagens')
+    except Exception as e:
+        print('Ocorreu um erro! Finalizando thread de escutar mensagens')
+        print('Erro: {}'.format(str(e)))
         sockObj.close()
         break
+
+sockObj.close()

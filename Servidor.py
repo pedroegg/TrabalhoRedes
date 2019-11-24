@@ -2,12 +2,12 @@ from socket import *
 import _thread
 from time import strftime
 import random
+import time
 
 
 clientesObjeto = []
 sockObj = socket(AF_INET, SOCK_STREAM)
-
-meuHost = '10.254.187.12'
+meuHost = '192.168.2.14'
 minhaPort = 5000
 
 orig = (meuHost, minhaPort)
@@ -15,6 +15,9 @@ sockObj.bind(orig)
 sockObj.listen(1)
 
 matriz = None
+linhaAnterior = None
+colunaAnterior = None
+fimJogo = False
 
 
 class Cliente:
@@ -45,18 +48,20 @@ class Matriz:
     lista8 = []
     lista9 = []
     lista10 = []
+    valorInicial = None
 
     def __init__(self, valorInicial):
-        self.lista1 = [valorInicial] * 10
-        self.lista2 = [valorInicial] * 10
-        self.lista3 = [valorInicial] * 10
-        self.lista4 = [valorInicial] * 10
-        self.lista5 = [valorInicial] * 10
-        self.lista6 = [valorInicial] * 10
-        self.lista7 = [valorInicial] * 10
-        self.lista8 = [valorInicial] * 10
-        self.lista9 = [valorInicial] * 10
-        self.lista10 = [valorInicial] * 10
+        self.valorInicial = valorInicial
+        self.lista1 = [self.valorInicial] * 10
+        self.lista2 = [self.valorInicial] * 10
+        self.lista3 = [self.valorInicial] * 10
+        self.lista4 = [self.valorInicial] * 10
+        self.lista5 = [self.valorInicial] * 10
+        self.lista6 = [self.valorInicial] * 10
+        self.lista7 = [self.valorInicial] * 10
+        self.lista8 = [self.valorInicial] * 10
+        self.lista9 = [self.valorInicial] * 10
+        self.lista10 = [self.valorInicial] * 10
         self.posicionarNavios()
 
     def get(self, posicaox, posicaoy):
@@ -104,37 +109,57 @@ class Matriz:
             self.lista10[posicaoy] = valor
 
     def print(self):
+        print("  | A B C D E F G H I J")
+        print("-----------------------")
+        print("0", end=' | ')
         for x in self.lista1:
             print(x, end=' ')
         print('')
+        print("1", end=' | ')
         for x in self.lista2:
             print(x, end=' ')
         print('')
+        print("2", end=' | ')
         for x in self.lista3:
             print(x, end=' ')
         print('')
+        print("3", end=' | ')
         for x in self.lista4:
             print(x, end=' ')
         print('')
+        print("4", end=' | ')
         for x in self.lista5:
             print(x, end=' ')
         print('')
+        print("5", end=' | ')
         for x in self.lista6:
-
             print(x, end=' ')
         print('')
+        print("6", end=' | ')
         for x in self.lista7:
             print(x, end=' ')
         print('')
+        print("7", end=' | ')
         for x in self.lista8:
             print(x, end=' ')
         print('')
+        print("8", end=' | ')
         for x in self.lista9:
             print(x, end=' ')
         print('')
+        print("9", end=' | ')
         for x in self.lista10:
             print(x, end=' ')
         print('')
+        print("-----------------------")
+        print("  | A B C D E F G H I J")
+
+    def isTodosNaviosAfundados(self):
+        for x in range(0, 10, 1):
+            for y in range(0, 10, 1):
+                if self.get(x, y) != 'X' and self.get(x, y) != self.valorInicial:
+                    return False
+        return True
 
     def insertPortaAviao(self, xInicial, yInicial, HorizontalOrVertical):
         self.set(xInicial, yInicial, 'A')
@@ -180,12 +205,12 @@ class Matriz:
         IsOk = True
         if HorizontalOrVertical == 0:
             for x in range(yInicial, yInicial + numPosicoes, 1):
-                if self.get(xInicial, x) != 0:
+                if self.get(xInicial, x) != self.valorInicial:
                     IsOk = False
             return IsOk
         else:
             for x in range(xInicial, xInicial + numPosicoes, 1):
-                if self.get(x, yInicial) != 0:
+                if self.get(x, yInicial) != self.valorInicial:
                     IsOk = False
             return IsOk
 
@@ -223,11 +248,70 @@ def getHorario():
     return strftime("%d/%m/%Y %H:%M:%S")
 
 
-def darTiro(conexao):
-    linha = random.randint(0, 9)
-    coluna = random.randint(0, 9)
-    print("Atirando na posição {}, {}...".format(linha, coluna))
-    conexao.sendall("TIRO {},{}".format(linha, coluna).encode('utf-8'))
+def convertColunaToInt(caractere):
+    return int(ord(caractere) - 65)
+
+
+def convertColunaToChar(numero):
+    return chr(numero + 65)
+
+
+def darTiro(conexao, HIT):
+    global linhaAnterior
+    global colunaAnterior
+
+    # Se o HIT for True, significa que acertei o tiro anterior. Logo, vou tentar atirar em uma posicao vizinha
+    if HIT:
+        orientacao = random.randint(0, 1)
+        somarOUsubtrair = random.randint(0, 1)
+        erro = False
+
+        # Verificacao para ver se ira ocorrer problemas de indice ao somar ou subtrair a coluna ou linha
+
+        # Verificacao do caso em que a orientacao seja horizontal
+        if orientacao == 0 and ((somarOUsubtrair == 0 and colunaAnterior == 9) or (somarOUsubtrair == 1 and colunaAnterior == 0)):
+            # Caso va ocorrer o problema se for horizontal, tento trocar a orientacao para vertical
+            orientacao = 1
+
+        # Verificacao do caso em que a orientacao seja vertical
+        if orientacao == 1 and ((somarOUsubtrair == 0 and linhaAnterior == 9) or (somarOUsubtrair == 1 and linhaAnterior == 0)):
+            # Caso va ocorrer o problema se for vertical, tento ver se o mesmo ocorre com a orientacao horizontal
+            if (somarOUsubtrair == 0 and colunaAnterior == 9) or (somarOUsubtrair == 1 and colunaAnterior == 0):
+                # Se o mesmo ocorre com a orientacao horizontal, ou seja, o problema ocorre independente da orientacao
+                # Entao eu sorteio as posicoes ao inves de usar as antigas para atirar em quadrados vizinhos
+                linha = random.randint(0, 9)
+                linhaAnterior = linha
+                coluna = random.randint(0, 9)
+                colunaAnterior = coluna
+                erro = True # Sinalizo que nao devo fazer as operacoes de soma ou subtracao, para fugir do erro
+            else:
+                orientacao = 0
+
+        # Verificacoes da orientacao. Se horizontal, devo somar ou subtrair da coluna, caso contrario, da linha
+        if orientacao == 0 and erro is False: # Horizontal
+            linha = linhaAnterior
+            if somarOUsubtrair == 0: # Somar
+                coluna = colunaAnterior + 1
+            else: # Subtrair
+                coluna = colunaAnterior - 1
+            colunaAnterior = coluna
+        else: # Vertical
+            coluna = colunaAnterior
+            if somarOUsubtrair == 0: # Somar
+                linha = linhaAnterior + 1
+            else: # Subtrair
+                linha = linhaAnterior - 1
+            linhaAnterior = linha
+
+        print("Atirando na posicao {}, {}...".format(linha, convertColunaToChar(coluna)))
+        conexao.sendall("TIRO {},{}".format(linha, coluna).encode('utf-8'))
+    else:
+        linha = random.randint(0, 9)
+        linhaAnterior = linha
+        coluna = random.randint(0, 9)
+        colunaAnterior = coluna
+        print("Atirando na posicao {}, {}...".format(linha, convertColunaToChar(coluna)))
+        conexao.sendall("TIRO {},{}".format(linha, coluna).encode('utf-8'))
 
 
 def conectado(clienteConectado):
@@ -238,56 +322,70 @@ def conectado(clienteConectado):
     # Inicio do jogo!
 
     conexaoCliente.sendall('StartGame'.encode('utf-8'))
-    print("O Jogo Começou!")
+    print("O Jogo Comecou!")
 
     while True:
         try:
             mensagem = conexaoCliente.recv(1024)
             mensagem = mensagem.decode('utf-8')
             if not mensagem:
-                print('{}: Cliente {} finalizou a conexão.'.format(getHorario(), nomeCliente))
+                print('{}: Cliente {} finalizou a conexao.'.format(getHorario(), nomeCliente))
                 clientesObjeto.remove(clienteConectado)
                 for p in clientesObjeto:
                     p.getConexaoCliente().sendall('Cliente {} desconectou-se!'.format(nomeCliente).encode('utf-8'))
                 break
-            print('{}: Cliente {} enviou -> {}'.format(getHorario(), nomeCliente, mensagem))
+            # print('{}: Cliente {} enviou -> {}'.format(getHorario(), nomeCliente, mensagem))
+            if "FIMJOGO" in mensagem:
+                print("PARABENS!! VOCE GANHOU O JOGO! :)")
+                clientesObjeto.remove(clienteConectado)
+                break
             if "TIRO" in mensagem:
                 params = mensagem.replace('TIRO ', '').split(',')
                 linha = int(params[0])
                 coluna = int(params[1])
-                if str(matriz.get(linha, coluna)) != '0' and str(matriz.get(linha, coluna)) != 'X':
+                if matriz.get(linha, coluna) != matriz.valorInicial and matriz.get(linha, coluna) != 'X':
+                    valorPosicao = matriz.get(linha, coluna)
                     matriz.set(linha, coluna, 'X')
-                    print("Cliente acertou o tiro! Na posição {}, {}".format(linha, coluna))
-                    print("Vez do Cliente, novamente!")
-                    conexaoCliente.sendall("HIT".encode('utf-8'))
+                    print("Cliente acertou o tiro! Na posicao {}, {}".format(linha, convertColunaToChar(coluna)))
+                    matriz.print()
+                    if matriz.isTodosNaviosAfundados():
+                        print("FIM DE JOGO! Cliente ganhou! :(")
+                        global fimJogo
+                        fimJogo = True
+                        conexaoCliente.sendall("FIMJOGO".encode('utf-8'))
+                    else:
+                        print("Vez do Cliente, novamente!")
+                        conexaoCliente.sendall("HIT {}".format(valorPosicao).encode('utf-8'))
                 else:
-                    print("Cliente errou o tiro! Na posição {}, {}".format(linha, coluna))
+                    print("Cliente errou o tiro! Na posicao {}, {}".format(linha, convertColunaToChar(coluna)))
                     print("Sua vez, Servidor!")
                     conexaoCliente.sendall("MISS".encode('utf-8'))
-                    darTiro(conexaoCliente)
+                    time.sleep(1.5)
+                    darTiro(conexaoCliente, False)
             if "HIT" in mensagem:
-                print("Você acertou o tiro! Sua vez novamente!")
-                darTiro(conexaoCliente)
+                print("Voce acertou o tiro! Sua vez novamente!")
+                time.sleep(1)
+                darTiro(conexaoCliente, True)
             if "MISS" in mensagem:
-                print("Você errou o tiro :(\nVez do oponente!")
+                print("Voce errou o tiro :(\nVez do Cliente!")
         except Exception as e:
-            print('{}: Deu erro na conexão com o cliente {}.'.format(getHorario(), nomeCliente))
+            print('{}: Deu erro na conexao com o cliente {}.'.format(getHorario(), nomeCliente))
             print('Mensagem do erro : ' + str(e))
             clientesObjeto.remove(clienteConectado)
             for p in clientesObjeto:
                 p.getConexaoCliente().sendall('Cliente {} desconectou-se!'.format(nomeCliente).encode('utf-8'))
             break
 
-    print('Finalizando conexão do cliente', nomeCliente)
+    print('Finalizando conexao do cliente', nomeCliente)
     conexaoCliente.close()
     _thread.exit()
 
 
 def receberConexao():
-    while True:
+    while True and not fimJogo:
         con, cliente = sockObj.accept()
         msg = con.recv(1024).decode('utf-8')
-        print("MensagemRecebida = " + msg)
+        # print("MensagemRecebida = " + msg)
         if 'ConectarCliente' in msg:
             global matriz
             matriz = Matriz(0)
@@ -298,10 +396,12 @@ def receberConexao():
                 x.getConexaoCliente().sendall('Cliente {} conectado!'.format(clienteNovo.getNomeCliente()).encode('utf-8'))
             _thread.start_new_thread(conectado, tuple([clienteNovo]))
         else:
-            print('Cliente {} desatualizado!'.format(cliente[1]))
-            con.sendall('Seu cliente está desatualizado! Favor atualizar e tentar novamente!'.encode('utf-8'))
+            print("Ocorreu um problema ao tentar conectar o Cliente {} ao Servidor".format(cliente[1]))
+            con.sendall('Seu Cliente tentou se conectar, mas ocorreu um problema.'.encode('utf-8'))
             con.close()
-            print('Conexão com cliente {} finalizada'.format(cliente[1]))
+            print('Conexao com cliente {} finalizada'.format(cliente[1]))
+
+    sockObj.close()
 
 
 receberConexao()
